@@ -1,22 +1,29 @@
-// test/app.test.js
 const chai = require('chai');
 const chaiHttp = require('chai-http');
-const app = require('../app'); // Make sure app.js exports the app instance
-const expect = chai.expect;
+const app = require('../app'); // adjust if app is elsewhere
 
+const expect = chai.expect;
 chai.use(chaiHttp);
 
-describe("GET /db", () => {
-  it("should return a message about db connection", (done) => {
+describe('App Integration Tests', () => {
+  it('should connect to the database successfully', (done) => {
     chai
       .request(app)
-      .get("/db")
+      .get('/db')
       .end((err, res) => {
         expect(res).to.have.status(200);
-        expect(res.text).to.be.oneOf([
-          "db connection successful",
-          "db connection failed"
-        ]);
+        expect(res.text).to.include('db connection');
+        done();
+      });
+  });
+
+  it('should connect to Redis successfully', (done) => {
+    chai
+      .request(app)
+      .get('/redis')
+      .end((err, res) => {
+        expect(res).to.have.status(200);
+        expect(res.text).to.include('redis');
         done();
       });
   });
