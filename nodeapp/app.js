@@ -1,52 +1,63 @@
-const express = require('express')
-var mysql = require('mysql');
-const app = express()
-const port = 3000
-
-var connection = mysql.createConnection({
-  host     : process.env.RDS_HOSTNAME,
-  user     : process.env.RDS_USERNAME,
-  password : process.env.RDS_PASSWORD,
-  port     : process.env.RDS_PORT
-});
-app.get("/db", (req, res) => {
-
-connection.connect(function(err) {
-  if (err) {
-	  res.send("db connection failed")
-    console.error('Database connection failed: ' + err.stack);
-    return;
- }
-	res.send("db connection successful");
-  console.log('Connected to database.');
-
-connection.end();
-});})
-
+const express = require('express');
+const mysql = require('mysql');
 const redis = require('redis');
-const client = redis.createClient({
-    host: process.env.REDIS_HOSTNAME,
-    port: process.env.REDIS_PORT,
+
+const app = express();
+const port = 3000;
+
+// MySQL connection config (connection made per request)
+function connectToMySQL() {
+  return mysql.createConnection({
+    host: process.env.RDS_HOSTNAME,
+    user: process.env.RDS_USERNAME,
+    password: process.env.RDS_PASSWORD,
+    port: process.env.RDS_PORT
+  });
+}
+
+app.get("/db", (req, res) => {
+  const connection = connectToMySQL();
+
+  connection.connect((err) => {
+    if (err) {
+      console.error('Database connection failed: ' + err.stack);
+      res.status(500).send("db connection failed");
+    } else {
+      console.log('Connected to database.');
+      res.send("db connection successful");
+    }
+    connection.end();
+  });
 });
 
-client.on('error', err => {
-    console.log('Error ' + err);
+// Redis client (only one needed)
+const client = redis.createClient({
+  host: process.env.REDIS_HOSTNAME,
+  port: process.env.REDIS_PORT,
+});
+
+client.on('error', (err) => {
+  console.log('Redis Error: ' + err);
 });
 
 app.get('/redis', (req, res) => {
+  client.set('foo', 'bar', (error, reply) => {
+    if (error) {
+      console.error(error);
+      res.status(500).send("redis connection failed");
+    } else {
+      console.log(reply);
+      res.send("redis is successfully connected");
+    }
+  });
+});
 
-  client.set('foo','bar', (error, rep)=> {                
-    if(error){     
-console.log(error);
-      res.send("redis connection failed");                             
-      return;                
-  }                 
-  if(rep){                          //JSON objects need to be parsed after reading from redis, since it is stringified before being stored into cache                      
- console.log(rep);
-  res.send("redis is successfuly connected");                 
- }}) 
-  })
-  
+// Export for testing
+module.exports = app;
+
+// Start server only if not in test mode
+if (require.main === module) {
   app.listen(port, () => {
-    console.log(`Example app listening at http://localhost:${port}`)
-  })
+    console.log(`App listening at http://localhost:${port}`);
+  });
+}
