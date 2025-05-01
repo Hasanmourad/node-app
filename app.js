@@ -55,9 +55,5 @@ app.get('/redis', (req, res) => {
 // Export for testing
 module.exports = app;
 
-// Start server only if not in test mode
-if (require.main === module) {
-  app.listen(port, () => {
-    console.log(`App listening at http://localhost:${port}`);
-  });
+
 }
